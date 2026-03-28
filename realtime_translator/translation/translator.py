@@ -14,7 +14,8 @@ logger = logging.getLogger(__name__)
 class TransformersMarianTranslator(BaseTranslator):
     def __init__(self, settings: ModelProviderSettings) -> None:
         self.settings = settings
-        self._pipelines: dict[tuple[str, str], object] = {}
+        self._models: dict[tuple[str, str], object] = {}
+        self._tokenizers: dict[tuple[str, str], object] = {}
         self._lock = asyncio.Lock()
 
     async def translate(
@@ -30,9 +31,18 @@ class TransformersMarianTranslator(BaseTranslator):
         transcript: TranscriptSegment,
         target_language: str,
     ) -> TranslationSegment | None:
-        pipeline = self._get_pipeline(transcript.language, target_language)
-        result = pipeline(transcript.text, max_length=int(self.settings.options.get("max_length", 256)))
-        translated_text = result[0]["translation_text"].strip()
+        model, tokenizer = self._get_model_bundle(transcript.language, target_language)
+        max_length = int(self.settings.options.get("max_length", 256))
+        encoded = tokenizer(
+            transcript.text,
+            return_tensors="pt",
+            truncation=True,
+            max_length=max_length,
+        )
+        if self.settings.device == "cuda":
+            encoded = {key: value.to("cuda") for key, value in encoded.items()}
+        generated = model.generate(**encoded, max_length=max_length)
+        translated_text = tokenizer.decode(generated[0], skip_special_tokens=True).strip()
         if not translated_text:
             return None
         return TranslationSegment(
@@ -46,19 +56,19 @@ class TransformersMarianTranslator(BaseTranslator):
             ended_at=transcript.ended_at,
         )
 
-    def _get_pipeline(self, source_language: str, target_language: str):
+    def _get_model_bundle(self, source_language: str, target_language: str):
         key = (source_language, target_language)
-        if key not in self._pipelines:
-            from transformers import pipeline  # type: ignore
+        if key not in self._models:
+            from transformers import AutoModelForSeq2SeqLM, AutoTokenizer  # type: ignore
 
-            device = 0 if self.settings.device == "cuda" else -1
             model_name = self._resolve_model_name(source_language, target_language)
-            self._pipelines[key] = pipeline(
-                task="translation",
-                model=model_name,
-                device=device,
-            )
-        return self._pipelines[key]
+            tokenizer = AutoTokenizer.from_pretrained(model_name)
+            model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+            if self.settings.device == "cuda":
+                model = model.to("cuda")
+            self._tokenizers[key] = tokenizer
+            self._models[key] = model
+        return self._models[key], self._tokenizers[key]
 
     def _resolve_model_name(self, source_language: str, target_language: str) -> str:
         model_mapping = self.settings.options.get("models", {})

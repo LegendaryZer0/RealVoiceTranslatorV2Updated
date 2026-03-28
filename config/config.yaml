@@ -7,20 +7,20 @@ app:
 audio:
   microphone:
     enabled: true
-    device_name: null
-    sample_rate: 16000
+    device_name: 32
+    sample_rate: 48000
     channels: 1
     chunk_ms: 20
     queue_maxsize: 256
   system_loopback:
     enabled: true
-    device_name: null
-    sample_rate: 16000
+    device_name: "Динамики (Sound Blaster Z SE)"
+    sample_rate: 48000
     channels: 2
     chunk_ms: 20
     queue_maxsize: 256
-  headphones_output_device: "Headphones (Realtek(R) Audio)"
-  virtual_microphone_output_device: "CABLE Input (VB-Audio Virtual Cable)"
+  headphones_output_device: 28
+  virtual_microphone_output_device: 29
   target_output_sample_rate: 24000
 
 vad:
@@ -34,7 +34,7 @@ vad:
 stt:
   provider: "faster-whisper"
   model: "small"
-  device: "cuda"
+  device: "auto"
   compute_type: "int8_float16"
   enabled: true
   options:

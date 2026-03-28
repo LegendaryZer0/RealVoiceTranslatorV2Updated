@@ -14,7 +14,7 @@ class AppSettings:
 @dataclass(slots=True)
 class CaptureSettings:
     enabled: bool = True
-    device_name: str | None = None
+    device_name: str | int | None = None
     sample_rate: int = 16000
     channels: int = 1
     chunk_ms: int = 20
@@ -27,8 +27,8 @@ class AudioSettings:
     system_loopback: CaptureSettings = field(
         default_factory=lambda: CaptureSettings(channels=2, device_name=None)
     )
-    headphones_output_device: str | None = None
-    virtual_microphone_output_device: str | None = None
+    headphones_output_device: str | int | None = None
+    virtual_microphone_output_device: str | int | None = None
     target_output_sample_rate: int = 24000
 
 

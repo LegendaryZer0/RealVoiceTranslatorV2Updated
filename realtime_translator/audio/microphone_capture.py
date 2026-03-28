@@ -4,6 +4,7 @@ import asyncio
 import logging
 import threading
 
+from realtime_translator.audio.device_resolver import resolve_sounddevice_device
 from realtime_translator.config.models import CaptureSettings
 from realtime_translator.models.events import AudioFrame
 
@@ -40,16 +41,22 @@ class MicrophoneCaptureService:
 
         import sounddevice as sd  # type: ignore
 
+        resolved_device = resolve_sounddevice_device(self.settings.device_name, kind="input")
+
         self._stream = sd.RawInputStream(
             samplerate=self.settings.sample_rate,
             blocksize=blocksize,
             channels=self.settings.channels,
             dtype="int16",
-            device=self.settings.device_name,
+            device=resolved_device,
             callback=callback,
         )
         self._stream.start()
-        logger.info("Microphone capture started, device=%s", self.settings.device_name or "default")
+        logger.info(
+            "Microphone capture started, configured_device=%s, resolved_device=%s",
+            self.settings.device_name or "default",
+            resolved_device,
+        )
 
     async def stop(self) -> None:
         self._stop_event.set()

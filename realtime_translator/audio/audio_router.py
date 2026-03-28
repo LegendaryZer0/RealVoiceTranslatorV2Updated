@@ -5,6 +5,7 @@ import logging
 
 import numpy as np
 
+from realtime_translator.audio.device_resolver import resolve_sounddevice_device
 from realtime_translator.config.models import AudioSettings
 from realtime_translator.models.events import SynthesizedAudio
 
@@ -50,5 +51,6 @@ class AudioRouter:
         audio = np.frombuffer(pcm, dtype=np.int16).astype(np.float32) / 32768.0
         if channels > 1:
             audio = audio.reshape(-1, channels)
-        sd.play(audio, samplerate=sample_rate, device=device_name, blocking=True)
-        logger.debug("Playback complete on device=%s", device_name)
+        resolved_device = resolve_sounddevice_device(device_name, kind="output")
+        sd.play(audio, samplerate=sample_rate, device=resolved_device, blocking=True)
+        logger.debug("Playback complete on configured_device=%s resolved_device=%s", device_name, resolved_device)

@@ -4,9 +4,11 @@ import asyncio
 import logging
 import threading
 import time
+import warnings
 
 import numpy as np
 
+from realtime_translator.audio.device_resolver import resolve_soundcard_microphone
 from realtime_translator.config.models import CaptureSettings
 from realtime_translator.models.events import AudioFrame
 
@@ -42,10 +44,13 @@ class SystemAudioCaptureService:
     def _capture_loop(self, loop: asyncio.AbstractEventLoop, queue: asyncio.Queue[AudioFrame]) -> None:
         frames_per_chunk = int(self.settings.sample_rate * self.settings.chunk_ms / 1000)
 
-        import soundcard as sc  # type: ignore
-
-        speaker = sc.get_speaker(self.settings.device_name) if self.settings.device_name else sc.default_speaker()
-        with speaker.recorder(
+        self._patch_numpy_for_soundcard()
+        self._configure_soundcard_warnings()
+        loopback_mic = resolve_soundcard_microphone(
+            self.settings.device_name,
+            include_loopback=True,
+        )
+        with loopback_mic.recorder(
             samplerate=self.settings.sample_rate,
             channels=self.settings.channels,
             blocksize=frames_per_chunk,
@@ -63,6 +68,36 @@ class SystemAudioCaptureService:
                     timestamp=time.time(),
                 )
                 loop.call_soon_threadsafe(self._put_nowait, queue, frame)
+
+    @staticmethod
+    def _patch_numpy_for_soundcard() -> None:
+        original_fromstring = getattr(np, "fromstring", None)
+        if original_fromstring is None or getattr(np, "_soundcard_fromstring_patched", False):
+            return
+
+        def _compat_fromstring(obj, dtype=float, count=-1, sep="", *, like=None):
+            if sep == "" and not isinstance(obj, str):
+                return np.frombuffer(obj, dtype=dtype, count=count, like=like)
+            return original_fromstring(obj, dtype=dtype, count=count, sep=sep, like=like)
+
+        np.fromstring = _compat_fromstring  # type: ignore[assignment]
+        np._soundcard_fromstring_patched = True  # type: ignore[attr-defined]
+
+    @staticmethod
+    def _configure_soundcard_warnings() -> None:
+        try:
+            from soundcard.mediafoundation import SoundcardRuntimeWarning  # type: ignore
+
+            warnings.filterwarnings(
+                "ignore",
+                message="data discontinuity in recording",
+                category=SoundcardRuntimeWarning,
+            )
+        except Exception:
+            warnings.filterwarnings(
+                "ignore",
+                message="data discontinuity in recording",
+            )
 
     @staticmethod
     def _float_to_pcm16(data: np.ndarray) -> bytes:
