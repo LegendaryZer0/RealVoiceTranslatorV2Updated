@@ -1,0 +1,4 @@
+19:41:00 | INFO | config | Configuration loaded successfully from config\config.yaml
+19:41:00 | INFO | config | Pipelines enabled | outgoing=True incoming=True | STT=faster-whisper | Translation=transformers-marian | TTS=pyttsx3
+19:43:31 | INFO | config | Configuration loaded successfully from config\config.yaml
+19:43:31 | INFO | config | Pipelines enabled | outgoing=True incoming=True | STT=faster-whisper | Translation=transformers-marian | TTS=pyttsx3

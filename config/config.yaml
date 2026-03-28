@@ -1,0 +1,117 @@
+app:
+  name: "Realtime Voice Translator"
+  version: "0.1.0"
+  log_level: "INFO"
+  default_timeout_s: 15.0
+
+audio:
+  microphone:
+    enabled: true
+    device_name: null
+    sample_rate: 16000
+    channels: 1
+    chunk_ms: 20
+    queue_maxsize: 256
+  system_loopback:
+    enabled: true
+    device_name: null
+    sample_rate: 16000
+    channels: 2
+    chunk_ms: 20
+    queue_maxsize: 256
+  headphones_output_device: "Headphones (Realtek(R) Audio)"
+  virtual_microphone_output_device: "CABLE Input (VB-Audio Virtual Cable)"
+  target_output_sample_rate: 24000
+
+vad:
+  enabled: true
+  aggressiveness: 2
+  min_speech_ms: 300
+  silence_ms: 500
+  max_segment_ms: 6000
+  pad_ms: 200
+
+stt:
+  provider: "faster-whisper"
+  model: "small"
+  device: "cuda"
+  compute_type: "int8_float16"
+  enabled: true
+  options:
+    beam_size: 1
+    best_of: 1
+    condition_on_previous_text: false
+
+translation:
+  provider: "transformers-marian"
+  model: null
+  device: "cpu"
+  enabled: true
+  options:
+    max_length: 256
+    models:
+      ru-en: "Helsinki-NLP/opus-mt-ru-en"
+      en-ru: "Helsinki-NLP/opus-mt-en-ru"
+
+tts:
+  provider: "pyttsx3"
+  model: null
+  device: "cpu"
+  enabled: true
+  options:
+    rate: 175
+    voices:
+      en: "zira"
+      ru: "irina"
+
+voice_conversion:
+  provider: "none"
+  model: null
+  enabled: false
+  options:
+    rvc_model_path: null
+    speaker_embedding_path: null
+
+outgoing:
+  enabled: true
+  direction: "outgoing"
+  input_language: "ru"
+  output_language: "en"
+  speaker_label: "You"
+  source_name: "microphone"
+  target_name: "virtual_microphone"
+  input_queue_maxsize: 256
+  segment_queue_maxsize: 32
+  transcript_queue_maxsize: 32
+  translation_queue_maxsize: 32
+  synthesis_queue_maxsize: 16
+
+incoming:
+  enabled: true
+  direction: "incoming"
+  input_language: "en"
+  output_language: "ru"
+  speaker_label: "Remote"
+  source_name: "system_loopback"
+  target_name: "headphones"
+  input_queue_maxsize: 256
+  segment_queue_maxsize: 32
+  transcript_queue_maxsize: 32
+  translation_queue_maxsize: 32
+  synthesis_queue_maxsize: 16
+
+subtitles:
+  enabled: true
+  print_to_console: true
+
+logging:
+  level: "INFO"
+  log_dir: "logs"
+  json_logs: false
+
+runtime:
+  websocket_enabled: false
+  websocket_host: "127.0.0.1"
+  websocket_port: 8765
+  gpu_enabled: true
+  prefer_local_models: true
