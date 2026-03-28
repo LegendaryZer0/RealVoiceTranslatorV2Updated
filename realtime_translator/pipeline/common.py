@@ -115,6 +115,14 @@ class StreamingDirectionPipeline:
         while True:
             transcript = await self._transcript_queue.get()
             try:
+                if transcript.language.lower() == self.settings.output_language.lower():
+                    logger.debug(
+                        "Dropping %s transcript because detected language %s already matches target %s",
+                        self.settings.direction,
+                        transcript.language,
+                        self.settings.output_language,
+                    )
+                    continue
                 translation = await self.deps.translator.translate(
                     transcript,
                     target_language=self.settings.output_language,

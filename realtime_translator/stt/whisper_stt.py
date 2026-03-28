@@ -41,28 +41,42 @@ class FasterWhisperSTT(BaseSpeechRecognizer):
     def _transcribe_once(self, segment: SpeechSegment) -> TranscriptSegment | None:
         model = self._get_model()
         buffer = self._to_wav_buffer(segment)
+        forced_language = bool(self.settings.options.get("force_language", False))
         segments, info = model.transcribe(
             buffer,
-            language=segment.language,
+            language=segment.language if forced_language else None,
             vad_filter=False,
             beam_size=int(self.settings.options.get("beam_size", 1)),
             best_of=int(self.settings.options.get("best_of", 1)),
+            temperature=float(self.settings.options.get("temperature", 0.0)),
+            compression_ratio_threshold=float(
+                self.settings.options.get("compression_ratio_threshold", 2.4)
+            ),
+            log_prob_threshold=float(self.settings.options.get("log_prob_threshold", -1.0)),
+            no_speech_threshold=float(self.settings.options.get("no_speech_threshold", 0.7)),
             condition_on_previous_text=bool(
                 self.settings.options.get("condition_on_previous_text", False)
             ),
+            suppress_blank=bool(self.settings.options.get("suppress_blank", True)),
+            hallucination_silence_threshold=(
+                float(self.settings.options["hallucination_silence_threshold"])
+                if "hallucination_silence_threshold" in self.settings.options
+                else None
+            ),
         )
+        detected_language = getattr(info, "language", None) or segment.language
         text = " ".join(item.text.strip() for item in segments).strip()
         if not text:
             return None
         return TranscriptSegment(
             text=text,
-            language=segment.language,
+            language=detected_language,
             direction=segment.direction,
             source=segment.source,
             started_at=segment.started_at,
             ended_at=segment.ended_at,
             confidence=getattr(info, "language_probability", None),
-            metadata={"detected_language": getattr(info, "language", segment.language)},
+            metadata={"detected_language": detected_language},
         )
 
     def _get_model(self):

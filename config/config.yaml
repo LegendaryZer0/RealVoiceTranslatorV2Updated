@@ -41,6 +41,13 @@ stt:
     beam_size: 1
     best_of: 1
     condition_on_previous_text: false
+    force_language: false
+    temperature: 0.0
+    compression_ratio_threshold: 2.4
+    log_prob_threshold: -1.0
+    no_speech_threshold: 0.7
+    suppress_blank: true
+    hallucination_silence_threshold: 1.0
 
 translation:
   provider: "transformers-marian"
